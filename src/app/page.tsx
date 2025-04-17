@@ -21,6 +21,13 @@ import {
 } from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 
 interface LangChainResult {
   id: string;
@@ -34,6 +41,10 @@ const timeAgentSchema = Yup.object().shape({
   query: Yup.string().required("Query is required"),
 });
 
+const countrySchema = Yup.object().shape({
+  country: Yup.string().required("Country is required"),
+});
+
 const passwordSchema = Yup.object().shape({
   password: Yup.string().required("Password is required"),
 });
@@ -44,29 +55,57 @@ const textAnalysisSchema = Yup.object().shape({
 
 const LangChainPage = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<string>("agent");
+  const [activeTab, setActiveTab] = useState<string>("country");
 
-  // Agent API
-  const agentFormik = useFormik({
+  // Country API
+  const countryFormik = useFormik({
     initialValues: {
-      query: "",
+      country: "",
     },
-    validationSchema: timeAgentSchema,
+    validationSchema: countrySchema,
     onSubmit: (values) => {
-      agentMutation.mutate(values);
+      countryMutation.mutate(values);
     },
   });
 
-  const agentMutation = useMutation({
-    mutationFn: async (values: { query: string }) => {
-      return api.post("/api/langchain/agent", values);
+  const countryMutation = useMutation({
+    mutationFn: async (values: { country: string }) => {
+      // Add timeout to prevent UI hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+      try {
+        const response = await api.post("/api/langchain/country", values, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
     },
     onSuccess: (response) => {
-      toast("Agent query processed successfully");
+      toast("Country information processed successfully");
+
+      // Revalidate results immediately and after a short delay
       queryClient.invalidateQueries({ queryKey: ["langchain", "results"] });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["langchain", "results"] });
+      }, 1000);
     },
     onError: (error: Error) => {
-      toast(error.message || "Failed to process agent query");
+      // If it's a timeout error, still try to fetch results since the API might have completed
+      if (error.name === "AbortError" || error.message.includes("timeout")) {
+        toast(
+          "Request took too long, but data may have been processed. Check results below.",
+        );
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["langchain", "results"] });
+        }, 1000);
+      } else {
+        toast(error.message || "Failed to process country information");
+      }
     },
   });
 
@@ -162,48 +201,88 @@ const LangChainPage = () => {
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="agent">Time Agent</TabsTrigger>
-                <TabsTrigger value="sequential">
-                  Password Validation
-                </TabsTrigger>
-                <TabsTrigger value="parallel">Text Analysis</TabsTrigger>
+                <TabsTrigger value="country">Country Info Agent</TabsTrigger>
+                <TabsTrigger value="sequential">Pass strength</TabsTrigger>
+                <TabsTrigger value="parallel">Text analyze</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="agent">
+              <TabsContent value="country">
                 <form
-                  onSubmit={agentFormik.handleSubmit}
+                  onSubmit={countryFormik.handleSubmit}
                   className="space-y-4 pt-4"
                 >
+                  <div className="text-muted-foreground bg-muted/50 mb-4 rounded-md border p-3 text-sm">
+                    <p>
+                      This agent fetches data about the selected country in
+                      parallel:
+                    </p>
+                    <ol className="mt-2 list-decimal space-y-1 pl-5">
+                      <li>
+                        Get country exact time using get_country_time tool
+                      </li>
+                      <li>
+                        calls public api to fetch GDP, unemployment, CO2 of that
+                        country
+                      </li>
+                      <li>
+                        Read data from both tools and use llm to generate a
+                        news-like message
+                      </li>
+                      <li>Stores the result in the database</li>
+                    </ol>
+                  </div>
                   <div className="space-y-2">
-                    <Input
-                      type="text"
-                      id="query"
-                      name="query"
-                      placeholder="Ask about time in London or India"
-                      onChange={agentFormik.handleChange}
-                      value={agentFormik.values.query}
-                      className={
-                        agentFormik.errors.query ? "border-red-500" : ""
+                    <Select
+                      name="country"
+                      onValueChange={(value: string) =>
+                        countryFormik.setFieldValue("country", value)
                       }
-                    />
-                    {agentFormik.touched.query && agentFormik.errors.query && (
-                      <p className="text-sm text-red-500">
-                        {agentFormik.errors.query}
-                      </p>
-                    )}
+                    >
+                      <SelectTrigger
+                        className={
+                          countryFormik.errors.country ? "border-red-500" : ""
+                        }
+                      >
+                        <SelectValue placeholder="Select a country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="India">India</SelectItem>
+                        <SelectItem value="United Kingdom">
+                          United Kingdom (London)
+                        </SelectItem>
+                        <SelectItem value="United States">
+                          United States
+                        </SelectItem>
+                        <SelectItem value="Canada">Canada</SelectItem>
+                        <SelectItem value="Australia">Australia</SelectItem>
+                        <SelectItem value="Japan">Japan</SelectItem>
+                        <SelectItem value="Germany">Germany</SelectItem>
+                        <SelectItem value="France">France</SelectItem>
+                        <SelectItem value="Brazil">Brazil</SelectItem>
+                        <SelectItem value="South Africa">
+                          South Africa
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {countryFormik.touched.country &&
+                      countryFormik.errors.country && (
+                        <p className="text-sm text-red-500">
+                          {countryFormik.errors.country}
+                        </p>
+                      )}
                   </div>
                   <Button
-                    disabled={agentMutation.isPending}
+                    disabled={countryMutation.isPending}
                     type="submit"
                     className="w-full"
                   >
-                    {agentMutation.isPending ? (
+                    {countryMutation.isPending ? (
                       <div className="flex items-center justify-center">
                         <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing Query...
+                        Fetching Country Info...
                       </div>
                     ) : (
-                      "Ask Time Agent"
+                      "Get Country Information"
                     )}
                   </Button>
                 </form>
@@ -214,6 +293,18 @@ const LangChainPage = () => {
                   onSubmit={passwordFormik.handleSubmit}
                   className="space-y-4 pt-4"
                 >
+                  <div className="text-muted-foreground bg-muted/50 mb-4 rounded-md border p-3 text-sm">
+                    <p>This is a simple sequential chaining example</p>
+                    <ol className="mt-2 list-decimal space-y-1 pl-5">
+                      <li>It takes password from user</li>
+                      <li>Invoke a llm to validate the password</li>
+                      <li>If PASS it returns validation success</li>
+                      <li>
+                        If FAILS it invokes a feedback prompt and return
+                        response
+                      </li>
+                    </ol>
+                  </div>
                   <div className="space-y-2">
                     <Input
                       type="text"
@@ -255,6 +346,24 @@ const LangChainPage = () => {
                   onSubmit={textFormik.handleSubmit}
                   className="space-y-4 pt-4"
                 >
+                  <div className="text-muted-foreground bg-muted/50 mb-4 rounded-md border p-3 text-sm">
+                    <p>This is a simple parallel chaining example</p>
+                    <ol className="mt-2 list-decimal space-y-1 pl-5">
+                      <li>It takes input from user</li>
+                      <li>
+                        It calls sentiment prompt and returns POSITIVE,
+                        NEGATIVE, or NEUTRAL
+                      </li>
+                      <li>
+                        It calls stylePrompt and returns FORMAL, CASUAL, or
+                        TECHNICAL
+                      </li>
+                      <li>
+                        Since both the prompts are independent, they run in
+                        parallel saving time
+                      </li>
+                    </ol>
+                  </div>
                   <div className="space-y-2">
                     <Textarea
                       id="text"

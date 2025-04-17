@@ -5,11 +5,13 @@ import { createPasswordChain } from "../langchain/chains/sequential-chain";
 import { createAnalysisChain } from "../langchain/chains/parallel-chain";
 import { prisma } from "~/lib/prisma";
 import { LangchainStorage } from "../schemas/langchain-storage.schema";
+import { getTimeTool } from "../langchain/tools/time-tools";
+import { getCountryInfoTool } from "../langchain/tools/country-tools";
 
 // Agent
 export const processAgentQuery = async (c: Context) => {
   try {
-    const { query } = await c.req.json();
+    const { query, country } = await c.req.json();
 
     if (!query) {
       return c.json(err("Query is required"), 400);
@@ -34,7 +36,7 @@ export const processAgentQuery = async (c: Context) => {
     }
 
     // Storing in db
-    await storeLangchainResult({
+    await storeResult({
       query,
       answer,
       type: "agent",
@@ -43,6 +45,69 @@ export const processAgentQuery = async (c: Context) => {
     return c.json(success({ query, answer, steps: result.intermediateSteps }));
   } catch (error: any) {
     return c.json(err(`Failed to process query: ${error.message}`), 500);
+  }
+};
+
+// Country Agent
+export const processCountryInfo = async (c: Context) => {
+  try {
+    const { country } = await c.req.json();
+
+    if (!country) {
+      return c.json(err("Country name is required"), 400);
+    }
+
+    // running tools in parallel
+    const [timeResult, countryResult] = await Promise.all([
+      getTimeTool.func(country),
+      getCountryInfoTool.func(country),
+    ]);
+
+    const time =
+      timeResult.match(/Current time in .+?: (\d+:\d+)/)?.[1] || "unavailable";
+    const gdp =
+      countryResult.match(/GDP: ([\d\.]+) trillion USD/)?.[1] || "N/A";
+    const growth = countryResult.match(/GDP Growth: ([\d\.]+)%/)?.[1] || "N/A";
+    const unemployment =
+      countryResult.match(/Unemployment: ([\d\.]+)%/)?.[1] || "N/A";
+    const co2 =
+      countryResult.match(/CO2 Emissions: ([\d\.]+) metric tons/)?.[1] || "N/A";
+
+    const answer = `Breaking news from ${country}! It's currently ${time}. The economy boasts a GDP of ${gdp} trillion USD with ${growth}% growth. Unemployment sits at ${unemployment}%. Environment watch: CO2 emissions are at ${co2} metric tons. That's all for now, back to you in the studio!`;
+
+    // Store in db
+    await storeResult({
+      query: `Country information: ${country}`,
+      answer,
+      type: "agent",
+    });
+
+    // Create mock steps for consistent UI display
+    const steps = [
+      {
+        action: { tool: "get_time_for_timezone", toolInput: country },
+        observation: timeResult,
+      },
+      {
+        action: { tool: "get_country_info", toolInput: country },
+        observation: countryResult,
+      },
+    ];
+
+    return c.json(success({ country, answer, steps }));
+  } catch (error: any) {
+    //store the error in db
+    try {
+      await storeResult({
+        query: `Error for country info: ${error.message}`,
+        answer: `Error processing country information. Please try again.`,
+        type: "agent",
+      });
+    } catch (dbError) {
+      console.error("Failed to log error to DB:", dbError);
+    }
+
+    return c.json(err(`Failed to process country info: ${error.message}`), 500);
   }
 };
 
@@ -90,18 +155,6 @@ export const processTextAnalysis = async (c: Context) => {
 
 // ===================================================
 
-export const storeLangchainResult = async (data: LangchainStorage) => {
-  try {
-    const result = await prisma.tempLangchainStorage.create({
-      data,
-    });
-    return result;
-  } catch (error: any) {
-    console.error(`Failed to store langchain result: ${error.message}`);
-    throw error;
-  }
-};
-
 export const getLangchainResults = async (c: Context) => {
   try {
     const results = await prisma.tempLangchainStorage.findMany({
@@ -110,7 +163,13 @@ export const getLangchainResults = async (c: Context) => {
       },
       take: 20,
     });
-    return c.json(success(results));
+
+    // Sort again in case the database sort wasn't effective
+    const sortedResults = [...results].sort((a, b) => {
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+
+    return c.json(success(sortedResults));
   } catch (error: any) {
     return c.json(
       err(`Failed to fetch langchain results: ${error.message}`),
@@ -118,3 +177,13 @@ export const getLangchainResults = async (c: Context) => {
     );
   }
 };
+
+export async function storeResult(data: LangchainStorage): Promise<void> {
+  try {
+    await prisma.tempLangchainStorage.create({
+      data,
+    });
+  } catch (error: any) {
+    console.error(`Failed to store result: ${error.message}`);
+  }
+}

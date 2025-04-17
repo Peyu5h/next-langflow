@@ -1,6 +1,6 @@
 import createKyInstance from "./instance";
 import { DEFAULT_CONFIG } from "./config";
-import type { ApiConfig, APIResponse } from "./types";
+import type { ApiConfig, APIResponse, ApiRequestOptions } from "./types";
 
 let instance = createKyInstance();
 let currentConfig: ApiConfig = DEFAULT_CONFIG;
@@ -31,25 +31,51 @@ export const setAuthToken = (token?: string) => {
 };
 
 export const api = {
-  get: async <T>(url: string): Promise<APIResponse<T>> => {
+  get: async <T>(
+    url: string,
+    options?: ApiRequestOptions,
+  ): Promise<APIResponse<T>> => {
     const cleanUrl = url.replace(/^\//, "");
-    return instance.get(cleanUrl).json<APIResponse<T>>();
+    return instance
+      .get(cleanUrl, { signal: options?.signal })
+      .json<APIResponse<T>>();
   },
 
-  post: async <T>(url: string, data?: unknown): Promise<APIResponse<T>> => {
+  post: async <T>(
+    url: string,
+    data?: unknown,
+    options?: ApiRequestOptions,
+  ): Promise<APIResponse<T>> => {
     const cleanUrl = url.replace(/^\//, "");
-    return instance.post(cleanUrl, { json: data }).json<APIResponse<T>>();
+    return instance
+      .post(cleanUrl, {
+        json: data,
+        signal: options?.signal,
+      })
+      .json<APIResponse<T>>();
   },
 
-  put: async <T>(url: string, data?: unknown): Promise<APIResponse<T>> => {
+  put: async <T>(
+    url: string,
+    data?: unknown,
+    options?: ApiRequestOptions,
+  ): Promise<APIResponse<T>> => {
     const cleanUrl = url.replace(/^\//, "");
-    return instance.put(cleanUrl, { json: data }).json<APIResponse<T>>();
+    return instance
+      .put(cleanUrl, {
+        json: data,
+        signal: options?.signal,
+      })
+      .json<APIResponse<T>>();
   },
 
-  delete: async <T>(url: string): Promise<APIResponse<T>> => {
+  delete: async <T>(
+    url: string,
+    options?: ApiRequestOptions,
+  ): Promise<APIResponse<T>> => {
     const cleanUrl = url.replace(/^\//, "");
-    return instance.delete(cleanUrl).json<APIResponse<T>>();
+    return instance
+      .delete(cleanUrl, { signal: options?.signal })
+      .json<APIResponse<T>>();
   },
 };
-
-  ;

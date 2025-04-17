@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import {
-  processAgentQuery,
+  processCountryInfo,
   processPasswordChain,
   processTextAnalysis,
   getLangchainResults,
@@ -12,8 +12,8 @@ const langchainRoute = new Hono();
 langchainRoute.post("/sequential", processPasswordChain);
 langchainRoute.post("/parallel", processTextAnalysis);
 
-//agent
-langchainRoute.post("/agent", processAgentQuery);
+//country agent
+langchainRoute.post("/country", processCountryInfo);
 
 // results
 langchainRoute.get("/results", getLangchainResults);

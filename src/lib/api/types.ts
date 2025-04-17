@@ -22,6 +22,11 @@ export interface ApiConfig {
   enableAuth?: boolean;
 }
 
+export interface ApiRequestOptions {
+  signal?: AbortSignal;
+  headers?: Record<string, string>;
+}
+
 export class ApiError extends Error {
   public statusCode?: number;
 
