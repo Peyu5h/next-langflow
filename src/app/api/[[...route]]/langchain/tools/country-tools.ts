@@ -23,7 +23,7 @@ export const getCountryInfoTool = new DynamicTool({
         `https://api.api-ninjas.com/v1/country?name=${encodeURIComponent(searchName)}`,
         {
           headers: {
-            "X-Api-Key": "w6j0Cqy2hKPDnvt/3WmrcQ==WEgf1o1yDot9VgJv",
+            "X-Api-Key": process.env.NINJA_API_KEY || "",
           },
         },
       );

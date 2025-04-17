@@ -1,52 +1,14 @@
 import { Context } from "hono";
 import { err, success } from "../utils/response";
-import { createTimeAgent } from "../langchain/agents/time-agent";
 import { createPasswordChain } from "../langchain/chains/sequential-chain";
 import { createAnalysisChain } from "../langchain/chains/parallel-chain";
 import { prisma } from "~/lib/prisma";
 import { LangchainStorage } from "../schemas/langchain-storage.schema";
 import { getTimeTool } from "../langchain/tools/time-tools";
 import { getCountryInfoTool } from "../langchain/tools/country-tools";
-
-// Agent
-export const processAgentQuery = async (c: Context) => {
-  try {
-    const { query, country } = await c.req.json();
-
-    if (!query) {
-      return c.json(err("Query is required"), 400);
-    }
-
-    const agentExecutor = await createTimeAgent();
-    const result = await agentExecutor.invoke({
-      input: query,
-    });
-
-    let answer;
-    if (result.output === "Agent stopped due to max iterations.") {
-      if (result.intermediateSteps && result.intermediateSteps.length > 0) {
-        const lastStep =
-          result.intermediateSteps[result.intermediateSteps.length - 1];
-        answer = lastStep.observation;
-      } else {
-        answer = "Could not get a proper answer.";
-      }
-    } else {
-      answer = result.output;
-    }
-
-    // Storing in db
-    await storeResult({
-      query,
-      answer,
-      type: "agent",
-    });
-
-    return c.json(success({ query, answer, steps: result.intermediateSteps }));
-  } catch (error: any) {
-    return c.json(err(`Failed to process query: ${error.message}`), 500);
-  }
-};
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { llm } from "../utils/llm";
+import { StringOutputParser } from "@langchain/core/output_parsers";
 
 // Country Agent
 export const processCountryInfo = async (c: Context) => {
@@ -73,7 +35,27 @@ export const processCountryInfo = async (c: Context) => {
     const co2 =
       countryResult.match(/CO2 Emissions: ([\d\.]+) metric tons/)?.[1] || "N/A";
 
-    const answer = `Breaking news from ${country}! It's currently ${time}. The economy boasts a GDP of ${gdp} trillion USD with ${growth}% growth. Unemployment sits at ${unemployment}%. Environment watch: CO2 emissions are at ${co2} metric tons. That's all for now, back to you in the studio!`;
+    // invoking llm for answer
+    const outputPrompt = ChatPromptTemplate.fromTemplate(`
+      Create a concise 100-word news report about {country} using this data:
+      - Current time: {time}
+      - GDP: {gdp} trillion USD
+      - GDP Growth: {growth}%
+      - Unemployment rate: {unemployment}%
+      - CO2 Emissions: {co2} metric tons per capita
+      
+      Format your response as a brief, dont use any markdown or rich text just keep plain text and professional but light funny news update. Keep it factual and informative.
+    `);
+
+    const chain = outputPrompt.pipe(llm).pipe(new StringOutputParser());
+    const answer = await chain.invoke({
+      country,
+      time,
+      gdp,
+      growth,
+      unemployment,
+      co2,
+    });
 
     // Store in db
     await storeResult({
@@ -82,19 +64,7 @@ export const processCountryInfo = async (c: Context) => {
       type: "agent",
     });
 
-    // Create mock steps for consistent UI display
-    const steps = [
-      {
-        action: { tool: "get_time_for_timezone", toolInput: country },
-        observation: timeResult,
-      },
-      {
-        action: { tool: "get_country_info", toolInput: country },
-        observation: countryResult,
-      },
-    ];
-
-    return c.json(success({ country, answer, steps }));
+    return c.json(success({ country, answer }));
   } catch (error: any) {
     //store the error in db
     try {
@@ -123,6 +93,13 @@ export const processPasswordChain = async (c: Context) => {
     const passwordChain = createPasswordChain();
     const result = await passwordChain({ password });
 
+    await storeResult({
+      query: `Password processing: ${password}`,
+      answer: `Password processing result: ${result.feedback ? result.feedback : result.result}`,
+
+      type: "sequential",
+    });
+
     return c.json(success(result));
   } catch (error: any) {
     return c.json(err(`Failed to process password: ${error.message}`), 500);
@@ -146,6 +123,13 @@ export const processTextAnalysis = async (c: Context) => {
       sentiment: result.sentiment,
       style: result.style,
     };
+
+    // Store in db
+    await storeResult({
+      query: `Text analysis: ${text}`,
+      answer: `${analysisResult.sentiment}, ${analysisResult.style}`,
+      type: "parallel",
+    });
 
     return c.json(success(analysisResult));
   } catch (error: any) {
