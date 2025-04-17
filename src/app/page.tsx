@@ -1,103 +1,343 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFormik } from "formik";
+import { LucideLoader2 } from "lucide-react";
+import * as Yup from "yup";
+import { Button } from "~/components/ui/button";
+
+import { useState } from "react";
+import { Input } from "~/components/ui/input";
+import { toast } from "sonner";
+import { authClient } from "~/lib/auth-client";
+import { SignOutButton } from "~/components/auth/SignOutButton";
+import { api } from "~/lib/api";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Textarea } from "~/components/ui/textarea";
+
+interface LangChainResult {
+  id: string;
+  query: string;
+  answer: string;
+  timestamp: string;
+  type: string;
+}
+
+const timeAgentSchema = Yup.object().shape({
+  query: Yup.string().required("Query is required"),
+});
+
+const passwordSchema = Yup.object().shape({
+  password: Yup.string().required("Password is required"),
+});
+
+const textAnalysisSchema = Yup.object().shape({
+  text: Yup.string().required("Text is required"),
+});
+
+const LangChainPage = () => {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<string>("agent");
+
+  // Agent API
+  const agentFormik = useFormik({
+    initialValues: {
+      query: "",
+    },
+    validationSchema: timeAgentSchema,
+    onSubmit: (values) => {
+      agentMutation.mutate(values);
+    },
+  });
+
+  const agentMutation = useMutation({
+    mutationFn: async (values: { query: string }) => {
+      return api.post("/api/langchain/agent", values);
+    },
+    onSuccess: (response) => {
+      toast("Agent query processed successfully");
+      queryClient.invalidateQueries({ queryKey: ["langchain", "results"] });
+    },
+    onError: (error: Error) => {
+      toast(error.message || "Failed to process agent query");
+    },
+  });
+
+  // Sequential Chain API
+  const passwordFormik = useFormik({
+    initialValues: {
+      password: "",
+    },
+    validationSchema: passwordSchema,
+    onSubmit: (values) => {
+      passwordMutation.mutate(values);
+    },
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: async (values: { password: string }) => {
+      return api.post("/api/langchain/sequential", values);
+    },
+    onSuccess: (response) => {
+      toast("Password validation processed successfully");
+      queryClient.invalidateQueries({ queryKey: ["langchain", "results"] });
+    },
+    onError: (error: Error) => {
+      toast(error.message || "Failed to process password validation");
+    },
+  });
+
+  // Parallel Chain API
+  const textFormik = useFormik({
+    initialValues: {
+      text: "",
+    },
+    validationSchema: textAnalysisSchema,
+    onSubmit: (values) => {
+      textMutation.mutate(values);
+    },
+  });
+
+  const textMutation = useMutation({
+    mutationFn: async (values: { text: string }) => {
+      return api.post("/api/langchain/parallel", values);
+    },
+    onSuccess: (response) => {
+      toast("Text analysis processed successfully");
+      queryClient.invalidateQueries({ queryKey: ["langchain", "results"] });
+    },
+    onError: (error: Error) => {
+      toast(error.message || "Failed to process text analysis");
+    },
+  });
+
+  // Get results
+  const { data: results, isLoading: isLoadingResults } = useQuery<
+    LangChainResult[]
+  >({
+    queryKey: ["langchain", "results"],
+    queryFn: async () => {
+      try {
+        const response = await api.get<LangChainResult[]>(
+          "/api/langchain/results",
+        );
+        return response.success ? response.data : [];
+      } catch (error) {
+        console.error(error);
+        return [];
+      }
+    },
+  });
+
+  const { data: session } = authClient.useSession();
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="container mx-auto max-w-4xl p-6">
+      <div className="my-8 flex items-center gap-x-6">
+        <div className="w-full items-center">
+          <h1>Welcome {session?.user?.name}</h1>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <SignOutButton />
+      </div>
+
+      <div className="flex gap-4">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>LangChain Integration</CardTitle>
+            <CardDescription>
+              Interact with different types of LangChain APIs
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="agent">Time Agent</TabsTrigger>
+                <TabsTrigger value="sequential">
+                  Password Validation
+                </TabsTrigger>
+                <TabsTrigger value="parallel">Text Analysis</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="agent">
+                <form
+                  onSubmit={agentFormik.handleSubmit}
+                  className="space-y-4 pt-4"
+                >
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      id="query"
+                      name="query"
+                      placeholder="Ask about time in London or India"
+                      onChange={agentFormik.handleChange}
+                      value={agentFormik.values.query}
+                      className={
+                        agentFormik.errors.query ? "border-red-500" : ""
+                      }
+                    />
+                    {agentFormik.touched.query && agentFormik.errors.query && (
+                      <p className="text-sm text-red-500">
+                        {agentFormik.errors.query}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    disabled={agentMutation.isPending}
+                    type="submit"
+                    className="w-full"
+                  >
+                    {agentMutation.isPending ? (
+                      <div className="flex items-center justify-center">
+                        <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing Query...
+                      </div>
+                    ) : (
+                      "Ask Time Agent"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="sequential">
+                <form
+                  onSubmit={passwordFormik.handleSubmit}
+                  className="space-y-4 pt-4"
+                >
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      id="password"
+                      name="password"
+                      placeholder="Enter a password to validate"
+                      onChange={passwordFormik.handleChange}
+                      value={passwordFormik.values.password}
+                      className={
+                        passwordFormik.errors.password ? "border-red-500" : ""
+                      }
+                    />
+                    {passwordFormik.touched.password &&
+                      passwordFormik.errors.password && (
+                        <p className="text-sm text-red-500">
+                          {passwordFormik.errors.password}
+                        </p>
+                      )}
+                  </div>
+                  <Button
+                    disabled={passwordMutation.isPending}
+                    type="submit"
+                    className="w-full"
+                  >
+                    {passwordMutation.isPending ? (
+                      <div className="flex items-center justify-center">
+                        <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Validating Password...
+                      </div>
+                    ) : (
+                      "Validate Password"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="parallel">
+                <form
+                  onSubmit={textFormik.handleSubmit}
+                  className="space-y-4 pt-4"
+                >
+                  <div className="space-y-2">
+                    <Textarea
+                      id="text"
+                      name="text"
+                      placeholder="Enter text to analyze sentiment and style"
+                      onChange={textFormik.handleChange}
+                      value={textFormik.values.text}
+                      className={textFormik.errors.text ? "border-red-500" : ""}
+                    />
+                    {textFormik.touched.text && textFormik.errors.text && (
+                      <p className="text-sm text-red-500">
+                        {textFormik.errors.text}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    disabled={textMutation.isPending}
+                    type="submit"
+                    className="w-full"
+                  >
+                    {textMutation.isPending ? (
+                      <div className="flex items-center justify-center">
+                        <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing Text...
+                      </div>
+                    ) : (
+                      "Analyze Text"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <Card className="scrollbar max-h-[calc(100vh-20vh)] w-[60%] overflow-y-auto">
+          <CardHeader>
+            <CardTitle>Recent LangChain Results</CardTitle>
+            <CardDescription>
+              History of your recent interactions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingResults ? (
+              <div className="flex justify-center py-4">
+                <LucideLoader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {results && results.length > 0 ? (
+                  results.map((result: LangChainResult) => (
+                    <Card key={result.id} className="overflow-hidden">
+                      <CardHeader className="bg-muted p-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm">
+                            {result.type.charAt(0).toUpperCase() +
+                              result.type.slice(1)}
+                          </CardTitle>
+                          <span className="text-muted-foreground text-xs">
+                            {new Date(result.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <CardDescription className="mt-2 text-xs">
+                          {result.query}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-3">
+                        <p className="text-sm">{result.answer}</p>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-center">
+                    No results yet
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
-}
+};
+
+export default LangChainPage;
