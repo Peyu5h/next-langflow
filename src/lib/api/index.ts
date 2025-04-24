@@ -37,7 +37,10 @@ export const api = {
   ): Promise<APIResponse<T>> => {
     const cleanUrl = url.replace(/^\//, "");
     return instance
-      .get(cleanUrl, { signal: options?.signal })
+      .get(cleanUrl, {
+        signal: options?.signal,
+        timeout: options?.timeout,
+      })
       .json<APIResponse<T>>();
   },
 
@@ -51,6 +54,7 @@ export const api = {
       .post(cleanUrl, {
         json: data,
         signal: options?.signal,
+        timeout: options?.timeout,
       })
       .json<APIResponse<T>>();
   },
@@ -65,6 +69,7 @@ export const api = {
       .put(cleanUrl, {
         json: data,
         signal: options?.signal,
+        timeout: options?.timeout,
       })
       .json<APIResponse<T>>();
   },
@@ -75,7 +80,10 @@ export const api = {
   ): Promise<APIResponse<T>> => {
     const cleanUrl = url.replace(/^\//, "");
     return instance
-      .delete(cleanUrl, { signal: options?.signal })
+      .delete(cleanUrl, {
+        signal: options?.signal,
+        timeout: options?.timeout,
+      })
       .json<APIResponse<T>>();
   },
 };

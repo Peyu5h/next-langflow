@@ -56,15 +56,15 @@ export const getCountryInfoTool = new DynamicTool({
       };
 
       return `
-Country: ${info.name}
-GDP: ${info.gdp} trillion USD
-GDP Growth: ${info.gdp_growth}%
-Unemployment: ${info.unemployment}%
-CO2 Emissions: ${info.co2_emissions} metric tons
-Population: ${info.population} million
-Capital: ${info.capital}
-Currency: ${info.currency}
-Region: ${info.region}
+        Country: ${info.name}
+        GDP: ${info.gdp} trillion USD
+        GDP Growth: ${info.gdp_growth}%
+        Unemployment: ${info.unemployment}%
+        CO2 Emissions: ${info.co2_emissions} metric tons
+        Population: ${info.population} million
+        Capital: ${info.capital}
+        Currency: ${info.currency}
+        Region: ${info.region}
       `.trim();
     } catch (error: any) {
       console.error("Country info error:", error);

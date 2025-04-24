@@ -20,7 +20,6 @@ import { toast } from "sonner";
 import { SocialSignIn } from "./SocialSignIn";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 
-
 export function SignUpForm() {
   const router = useRouter();
   const [name, setName] = useState("");

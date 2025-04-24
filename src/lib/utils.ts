@@ -19,3 +19,10 @@ export const fetchCallback = ({
     },
   };
 };
+
+export const handleTextEllipsis = (text: string, maxLength: number = 14) => {
+  if (text.length > maxLength) {
+    return text.slice(0, maxLength) + "...";
+  }
+  return text;
+};

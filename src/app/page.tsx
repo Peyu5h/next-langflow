@@ -28,6 +28,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useLLM } from "~/store/llmStore";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "~/components/ui/navigation-menu";
+import Link from "next/link";
+import Navbar from "~/components/NavBar";
 
 interface LangChainResult {
   id: string;
@@ -179,13 +190,6 @@ const LangChainPage = () => {
 
   return (
     <div className="container mx-auto max-w-4xl p-6">
-      <div className="my-8 flex items-center gap-x-6">
-        <div className="w-full items-center">
-          <h1>Welcome {session?.user?.name}</h1>
-        </div>
-        <SignOutButton />
-      </div>
-
       <div className="flex gap-4">
         <Card className="w-full">
           <CardHeader>

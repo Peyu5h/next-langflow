@@ -20,6 +20,17 @@ const routes = app.route("/api", indexRoute);
 
 export type AppType = typeof routes;
 
+// Custom config for Vercel with longer timeouts
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb", // Larger payload support
+    },
+    responseLimit: "10mb", // Larger response support
+  },
+  maxDuration: 300, // Set maximum duration to 5 minutes (in seconds)
+};
+
 export const GET = handle(app);
 export const POST = handle(app);
 export const PUT = handle(app);

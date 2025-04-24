@@ -25,6 +25,7 @@ export interface ApiConfig {
 export interface ApiRequestOptions {
   signal?: AbortSignal;
   headers?: Record<string, string>;
+  timeout?: number;
 }
 
 export class ApiError extends Error {
