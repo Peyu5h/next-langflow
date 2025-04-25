@@ -26,3 +26,21 @@ export const handleTextEllipsis = (text: string, maxLength: number = 14) => {
   }
   return text;
 };
+
+export const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch (e) {
+    return "Unknown date";
+  }
+};
+
+export const truncateText = (text: string, maxLength: number = 24) => {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "...";
+};

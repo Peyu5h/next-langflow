@@ -6,7 +6,7 @@ import * as mammoth from "mammoth";
 import Tesseract from "tesseract.js";
 
 interface FileTextExtractorProps {
-  setExtractedText: (text: string) => void;
+  setExtractedText: (text: string, filename?: string) => void;
   label: string;
 }
 
@@ -106,22 +106,23 @@ const FileTextExtractor: React.FC<FileTextExtractorProps> = ({
     setError(null);
 
     try {
+      let text = "";
       if (file.type === "application/pdf") {
-        const text = await extractTextFromPDF(file);
-        setExtractedText(text);
+        text = await extractTextFromPDF(file);
       } else if (
         file.type ===
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       ) {
-        const text = await extractTextFromDOCX(file);
-        setExtractedText(text);
+        text = await extractTextFromDOCX(file);
       } else if (
         file.type ===
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       ) {
-        const text = await extractTextFromXLSX(file);
-        setExtractedText(text);
+        text = await extractTextFromXLSX(file);
       }
+
+      // Pass both the extracted text and the filename to the parent component
+      setExtractedText(text, file.name);
     } catch (error) {
       console.error("Error extracting text:", error);
       setError(
@@ -133,7 +134,7 @@ const FileTextExtractor: React.FC<FileTextExtractorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
       <label>{label}</label>
       <input
         type="file"
@@ -143,7 +144,7 @@ const FileTextExtractor: React.FC<FileTextExtractorProps> = ({
         className="hidden"
       />
       <Button
-        className="w-48"
+        className="w-full"
         onClick={() => fileInputRef.current?.click()}
         disabled={isExtracting || !pdfjs || isExtracted}
       >
