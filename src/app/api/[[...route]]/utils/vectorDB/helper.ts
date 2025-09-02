@@ -13,12 +13,13 @@ export async function validatePineconeIndex(): Promise<{
   indexDim: number;
 }> {
   const testEmbedding = await embeddings.embedQuery("test");
-  const embeddingDimension = testEmbedding.length;
+  const embeddingDim = testEmbedding.length;
+
   const indexInfo = await pinecone.describeIndex(INDEX_NAME);
-  const indexDimension = indexInfo.dimension || 1024;
+  const indexDim = indexInfo.dimension || 1024;
   return {
-    embeddingDim: embeddingDimension,
-    indexDim: indexDimension,
+    embeddingDim,
+    indexDim,
   };
 }
 

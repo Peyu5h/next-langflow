@@ -9,8 +9,7 @@ import { Button } from "~/components/ui/button";
 import { useState } from "react";
 import { Input } from "~/components/ui/input";
 import { toast } from "sonner";
-import { authClient } from "~/lib/auth-client";
-import { SignOutButton } from "~/components/auth/SignOutButton";
+
 import { api } from "~/lib/api";
 import {
   Card,
@@ -186,7 +185,7 @@ const LangChainPage = () => {
     },
   });
 
-  const { data: session } = authClient.useSession();
+
 
   return (
     <div className="container mx-auto max-w-4xl p-6">

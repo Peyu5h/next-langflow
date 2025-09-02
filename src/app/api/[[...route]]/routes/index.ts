@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import authRoutes from "./auth";
-import tokenRoutes from "./token.route";
 import langchainRoute from "./langchain";
 import ragRoute from "./rag";
+import sheetsRoutes from "./sheets";
+import autoBrowserRoutes from "./autoBrowserRoutes";
+import scrapeRoutes from "./scrape";
 
 const indexRoute = new Hono();
 
@@ -12,9 +13,9 @@ indexRoute.get("/", (c) => {
 });
 
 // routes
-indexRoute.route("/auth", authRoutes);
-indexRoute.route("/tokens", tokenRoutes);
 indexRoute.route("/langchain", langchainRoute);
 indexRoute.route("/rag", ragRoute);
-
+indexRoute.route("/sheets", sheetsRoutes);
+indexRoute.route("/auto-browser", autoBrowserRoutes);
+indexRoute.route("/scrape", scrapeRoutes);
 export default indexRoute;

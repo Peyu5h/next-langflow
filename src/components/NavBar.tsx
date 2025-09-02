@@ -12,6 +12,8 @@ const Navbar = () => {
   const links = [
     { href: "/", label: "Agents" },
     { href: "/rag", label: "RAG" },
+    { href: "/agenticFlow", label: "Agentic-Flow" },
+    { href: "/agent-builder", label: "Agent-Builder" },
     // { href: "/contact", label: "Contact" },
     // { href: "/ocr", label: "OCR" },
     // { href: "/spline", label: "Spline" },

@@ -5,7 +5,6 @@ import { ThemeProvider } from "next-themes";
 import ReactQueryProvider from "~/components/providers/ReactQueryProvider";
 import { Toaster } from "~/components/ui/sonner";
 import Navbar from "~/components/NavBar";
-import { SignOutButton } from "~/components/auth/SignOutButton";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -36,7 +35,6 @@ export default function RootLayout({
               <div className="w-full items-center">
                 <Navbar />
               </div>
-              <SignOutButton />
             </div>
             {children}
           </ReactQueryProvider>

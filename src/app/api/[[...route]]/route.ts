@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { cors } from "hono/cors";
-import indexRoute from "./routes";
+import indexRoute from "./routes/index";
 
 const app = new Hono();
 
