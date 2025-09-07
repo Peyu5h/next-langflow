@@ -1,9 +1,11 @@
-import React from "react";
+"use client";
 
-export default function Agentbuilder() {
+import WorkflowCanvas from "~/components/workflow/WorkflowCanvas";
+
+export default function WorkflowPage() {
   return (
-    <div className="mx-auto flex h-[calc(100vh-240px)] max-w-7xl flex-col items-center justify-center overflow-hidden rounded-lg border">
-      TODO
+    <div className="container mx-auto">
+      <WorkflowCanvas />
     </div>
   );
 }
